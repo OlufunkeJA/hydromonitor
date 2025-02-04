@@ -32,10 +32,12 @@
 #include <ArduinoJson.h>
 #endif
 
- 
+#include <FASTLED.h>
 
 // DEFINE VARIABLES
-#define ARDUINOJSON_USE_DOUBLE      1 
+#define ARDUINOJSON_USE_DOUBLE 1 
+#define DATA_PIN 10;
+CRGB leds[7];
 
 // DEFINE THE CONTROL PINS FOR THE DHT22 
 
@@ -43,14 +45,14 @@
 
 
 // MQTT CLIENT CONFIG  
-static const char* pubtopic      = "620012345";                    // Add your ID number here
+static const char* pubtopic      = "620162688";                    // Add your ID number here
 static const char* subtopic[]    = {"620012345_sub","/elet2415"};  // Array of Topics(Strings) to subscribe to
-static const char* mqtt_server   = "local";         // Broker IP address or Domain name as a String 
+static const char* mqtt_server   = "http://www.yanacreations.com/";         // Broker IP address or Domain name as a String 
 static uint16_t mqtt_port        = 1883;
 
 // WIFI CREDENTIALS
-const char* ssid       = "YOUR_SSID";     // Add your Wi-Fi ssid
-const char* password   = "YOUR_PASSWORD"; // Add your Wi-Fi password 
+const char* ssid       = "MonaConnect";     // Add your Wi-Fi ssid
+const char* password   = ""; // Add your Wi-Fi password 
 
 
 
@@ -100,6 +102,7 @@ void setup() {
   Serial.begin(115200);  // INIT SERIAL  
 
   // INITIALIZE ALL SENSORS AND DEVICES
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   
   /* Add all other necessary sensor Initializations and Configurations here */
 
@@ -107,17 +110,11 @@ void setup() {
   initialize();     // INIT WIFI, MQTT & NTP 
   // vButtonCheckFunction(); // UNCOMMENT IF USING BUTTONS INT THIS LAB, THEN ADD LOGIC FOR INTERFACING WITH BUTTONS IN THE vButtonCheck FUNCTION
  }
-  
-
-
+ 
 void loop() {
     // put your main code here, to run repeatedly:       
     vTaskDelay(1000 / portTICK_PERIOD_MS);    
 }
-
-
-
-
   
 //####################################################################
 //#                          UTIL FUNCTIONS                          #       
@@ -135,7 +132,7 @@ void vButtonCheck( void * pvParameters )  {
 
 void vUpdate( void * pvParameters )  {
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );    
-           
+
     for( ;; ) {
           // #######################################################
           // ## This function must PUBLISH to topic every second. ##
@@ -152,24 +149,29 @@ void vUpdate( void * pvParameters )  {
               // ##Publish update according to ‘{"id": "student_id", "timestamp": 1702212234, "temperature": 30, "humidity":90, "heatindex": 30}’
 
               // 1. Create JSon object
+              JsonDocument doc;
               
               // 2. Create message buffer/array to store serialized JSON object
+              char message[1100]  = {0};
               
               // 3. Add key:value pairs to JSon object based on above schema
+              doc["id"] = "620162688";
+              doc["timestamp"] = getTimeStamp();
+              doc["temperature"] = "30";
+              doc["humidity"] = "90";
+              doc["heatindex"] = calcHeatIndex();
 
-              // 4. Seralize / Covert JSon object to JSon string and store in message array
+              // 4. Seralize / Convert JSon object to JSon string and store in message array
+              serializeJson(doc, message);
                
-              // 5. Publish message to a topic sobscribed to by both backend and frontend                
-
-          }
-
-          
-            
+              // 5. Publish message to a topic sobscribed to by both backend and frontend   
+              if(mqtt.connected() ){
+                publish(pubtopic, message);
+              }             
+          }     
         vTaskDelay(1000 / portTICK_PERIOD_MS);  
     }
 }
-
- 
 
 unsigned long getTimeStamp(void) {
           // RETURNS 10 DIGIT TIMESTAMP REPRESENTING CURRENT TIME
@@ -177,7 +179,6 @@ unsigned long getTimeStamp(void) {
           time(&now); // Retrieve time[Timestamp] from system and save to &now variable
           return now;
 }
-
 
 void callback(char* topic, byte* payload, unsigned int length) {
   // ############## MQTT CALLBACK  ######################################
@@ -210,11 +211,37 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   if (strcmp(type, "controls") == 0){
     // 1. EXTRACT ALL PARAMETERS: NODES, RED,GREEN, BLUE, AND BRIGHTNESS FROM JSON OBJECT
+    /*const char* led = doc["device"];
+    const char* id = doc["id"];
+    const char* time = doc["timestamp"];
+    const char* temp = doc["temperature"];
+    const char* humid = doc["humidity"];
+    const char* heatIndex = doc["heatindex"];*/
+
+    const char* leds = doc["leds"];
+    const char* redVal = doc["red"];
+    const char* greenVal = doc["green"];
+    const char* blueVal = doc["blue"];
+    const char* brightness = doc["brightness"];
 
     // 2. ITERATIVELY, TURN ON LED(s) BASED ON THE VALUE OF NODES. Ex IF NODES = 2, TURN ON 2 LED(s)
+    int num = 0;
+
+    while (num < leds){
+      leds[num] = setColor(redVal, greenVal, blueVal);
+      FastLED.show();
+      vTaskDelay(500 / portTICK_PERIOD_MS);
+      num++;
+    }
 
     // 3. ITERATIVELY, TURN OFF ALL REMAINING LED(s).
-   
+    int num = 6
+    while (num > leds){
+      leds[num] = CRGB :: Black;
+      FastLED.show();
+      vTaskDelay(500 / portTICK_PERIOD_MS);
+      num--;
+    }
   }
 }
 
@@ -234,24 +261,24 @@ bool publish(const char *topic, const char *payload){
   return res;
 }
 
-
-
 //***** Complete the util functions below ******
 
 double convert_Celsius_to_fahrenheit(double c){    
     // CONVERTS INPUT FROM °C TO °F. RETURN RESULTS     
+    return (c * 9/5) + 32;
 }
 
 double convert_fahrenheit_to_Celsius(double f){    
-    // CONVERTS INPUT FROM °F TO °C. RETURN RESULT    
+    // CONVERTS INPUT FROM °F TO °C. RETURN RESULT   
+    return (f - 32) * 5/9;
 }
 
-double calcHeatIndex(double Temp, double Humid){
+double calcHeatIndex(double temp, double humid){
     // CALCULATE AND RETURN HEAT INDEX USING EQUATION FOUND AT https://byjus.com/heat-index-formula/#:~:text=The%20heat%20index%20formula%20is,an%20implied%20humidity%20of%2020%25
+    return -42.379 + (-2.04901523*temp) + (-10.14333127*humid) + (-0.22475541*temp*humid) + (-6.83783*pow(10,-3)*temp) + (-5.481717*pow(10,-2)*humid) + (-1.22874*pow(10,-2)*temp*humid) + (8.5282*pow(10,-4)*temp*humid) + (-1.99*pow(10,-6)*temp*humid);
   
 }
  
-
 bool isNumber(double number){       
         char item[20];
         snprintf(item, sizeof(item), "%f\n", number);
