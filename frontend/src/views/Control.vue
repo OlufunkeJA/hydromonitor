@@ -39,20 +39,28 @@
 // IMPORTS
 import { ref,reactive,watch ,onMounted,onBeforeUnmount,computed } from "vue";  
 import { useRoute ,useRouter } from "vue-router";
- 
+import { useMqttStore } from '@/store/mqttStore'; // Import Mqtt Store
+import { useAppStore } from "@/store/appStore"; 
  
 // VARIABLES
 const router = useRouter();
 const route = useRoute();  
 const led = reactive({"brightness":255,"leds":1,"color":{ r: 255, g: 0, b: 255, a: 1 }});
 let timer, ID = 1000;
-
+const Mqtt = useMqttStore();
+const { payload, payloadTopic } = storeToRefs(Mqtt);
 
 // FUNCTIONS
 onMounted(()=>{
     // THIS FUNCTION IS CALLED AFTER THIS COMPONENT HAS BEEN MOUNTED
-});
+    Mqtt.connect(); // Connect to Broker located on the backend
 
+    setTimeout( ()=>{
+        // Subscribe to each topic
+        // Mqtt.subscribe("topic1");
+        Mqtt.subscribe("620162688");
+    },3000);
+});
 
 onBeforeUnmount(()=>{
     // THIS FUNCTION IS CALLED RIGHT BEFORE THIS COMPONENT IS UNMOUNTED
