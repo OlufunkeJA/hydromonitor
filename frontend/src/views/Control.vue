@@ -1,9 +1,9 @@
 <template>
     <!-- HTML HERE -->    
     <v-container fluid align = "center">
-        <v-row max-width = "1200" justify = "center">
-            <v-column justify = "center">
-                <v-sheets class = "sheets, rounded-t-lg">
+        <VRow max-width = "1200" justify = "center">
+            <VCol align = "center">
+                <v-sheets class = "sheets rounded-t-lg">
                     <v-card class = "text-secondary" title = "LED Controls" color = "surface" subtitle = "Recent Settings" variant = "tonal" flat></v-card>
                 </v-sheets>
 
@@ -19,17 +19,17 @@
                     </v-card>
                 </v-sheets>
 
-                <v-sheets class = "sheets, pa-2" justify = "center" align = "center">
-                    <v-progress-circular rotate = "0" size = "200" width = "15" :model-value="led.leds *15" :color="indicatorColor">
+                <v-sheets class = "sheets pa-2" justify = "center" align = "center">
+                    <v-progress-circular rotate = "0" size = "200" :width = "15" :model-value="led.leds *15" :color="indicatorColor">
                         <span class="text-onSurface font-weight-bold">{{ led.leds }} LED(s)</span>
                     </v-progress-circular>
                 </v-sheets>
-            </v-column>
+            </VCol>
 
-            <v-column justify = "center">
+            <VCol align = "center">
                 <v-color-picker v-model="led.color"></v-color-picker>
-            </v-column>
-        </v-row>
+            </VCol>
+        </VRow>
     </v-container>
 </template>
 
@@ -41,6 +41,7 @@ import { ref,reactive,watch ,onMounted,onBeforeUnmount,computed } from "vue";
 import { useRoute ,useRouter } from "vue-router";
 import { useMqttStore } from '@/store/mqttStore'; // Import Mqtt Store
 import { useAppStore } from "@/store/appStore"; 
+import {storeToRefs} from "pinia";
  
 // VARIABLES
 const router = useRouter();
@@ -64,6 +65,7 @@ onMounted(()=>{
 
 onBeforeUnmount(()=>{
     // THIS FUNCTION IS CALLED RIGHT BEFORE THIS COMPONENT IS UNMOUNTED
+    Mqtt.unsubcribeAll;
 });
 
 // WATCHERS
